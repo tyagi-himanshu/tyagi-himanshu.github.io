@@ -12,11 +12,13 @@
             height: 100vh;
             margin: 0;
             background-color: #2c3e50;
+            font-family: 'Arial', sans-serif;
         }
 
         canvas {
             border: 2px solid #fff;
             background-color: #34495e;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
         }
 
         h1 {
@@ -26,7 +28,7 @@
             width: 100%;
             color: white;
             font-size: 36px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7);
         }
 
         #restart {
@@ -34,18 +36,52 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            padding: 10px 20px;
+            padding: 15px 30px;
             background-color: #e74c3c;
             color: white;
             border: none;
-            font-size: 18px;
+            font-size: 20px;
             display: none;
             cursor: pointer;
-            border-radius: 5px;
+            border-radius: 10px;
+            transition: background-color 0.3s ease;
         }
 
         #restart:hover {
             background-color: #c0392b;
+        }
+
+        #score {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        }
+
+        #level {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        }
+
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 40px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-size: 30px;
+            text-align: center;
+            border-radius: 20px;
+            display: none;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.9);
         }
     </style>
 </head>
@@ -53,6 +89,9 @@
 
 <h1>Tetris Game</h1>
 <canvas id="gameCanvas" width="300" height="600"></canvas>
+<div id="score">Score: 0</div>
+<div id="level">Level: 1</div>
+<div id="game-over">Game Over! <br> Score: 0</div>
 <button id="restart" onclick="restartGame()">Restart</button>
 
 <script>
@@ -60,12 +99,15 @@
     const ctx = canvas.getContext('2d');
     const row = 20;
     const col = 10;
-    const blockSize = 30; // Size of each block
+    const blockSize = 30;
     const colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22'];
-    let gameOver = false;
-    let board = Array.from({ length: row }, () => Array(col).fill(null));
 
-    const tetrominoes = [
+    let gameOver = false;
+    let score = 0;
+    let level = 1;
+    let board = Array.from({ length: row }, () => Array(col).fill(null));
+    let speed = 1000; // Initial game speed (milliseconds)
+    let tetrominoes = [
         [[1, 1, 1, 1]], // I
         [[1, 1], [1, 1]], // O
         [[0, 1, 0], [1, 1, 1]], // T
@@ -75,18 +117,18 @@
         [[0, 0, 1], [1, 1, 1]]  // J
     ];
 
-    let currentTetromino;
-    let tetrominoRow = 0;
-    let tetrominoCol = Math.floor(col / 2) - 1;
+    let currentTetromino, tetrominoRow = 0, tetrominoCol = Math.floor(col / 2) - 1, tetrominoIndex;
 
     document.addEventListener('keydown', control);
 
     function control(event) {
         if (gameOver) return;
-        if (event.keyCode === 37) moveLeft(); // Left Arrow
-        if (event.keyCode === 39) moveRight(); // Right Arrow
-        if (event.keyCode === 40) moveDown(); // Down Arrow
-        if (event.keyCode === 38) rotate(); // Up Arrow
+
+        if (event.keyCode === 37 || event.key === 'a') moveLeft(); // Left Arrow or A
+        if (event.keyCode === 39 || event.key === 'd') moveRight(); // Right Arrow or D
+        if (event.keyCode === 40 || event.key === 's') moveDown(); // Down Arrow or S
+        if (event.keyCode === 38 || event.key === 'w') rotate(); // Up Arrow or W
+        if (event.keyCode === 32) instantDrop(); // Spacebar
     }
 
     function moveLeft() {
@@ -121,6 +163,15 @@
         }
     }
 
+    function instantDrop() {
+        if (gameOver) return;
+
+        while (!collision(0, 1, currentTetromino)) {
+            tetrominoRow++;
+        }
+        placeTetromino();
+    }
+
     function collision(offsetX, offsetY, tetromino) {
         for (let rowIndex = 0; rowIndex < tetromino.length; rowIndex++) {
             for (let colIndex = 0; colIndex < tetromino[rowIndex].length; colIndex++) {
@@ -153,19 +204,43 @@
             if (board[i].every(cell => cell !== null)) {
                 board.splice(i, 1);
                 board.unshift(Array(col).fill(null));
+                score += 10;
+                document.getElementById('score').innerText = 'Score: ' + score;
+
+                // Increase speed every 3 lines cleared
+                if (score % 30 === 0) {
+                    level++;
+                    document.getElementById('level').innerText = 'Level: ' + level;
+                    speed -= 100; // Increase speed by reducing interval time
+                    clearInterval(gameInterval);
+                    gameInterval = setInterval(draw, speed); // Reset interval with new speed
+                }
+                playSound('clear-line');
             }
         }
     }
 
     function newTetromino() {
-        const tetrominoIndex = Math.floor(Math.random() * tetrominoes.length);
+        tetrominoIndex = Math.floor(Math.random() * tetrominoes.length);
         currentTetromino = tetrominoes[tetrominoIndex];
         tetrominoRow = 0;
         tetrominoCol = Math.floor(col / 2) - 1;
         if (collision(0, 0, currentTetromino)) {
             gameOver = true;
-            document.getElementById('restart').style.display = 'block'; // Show restart button
+            document.getElementById('game-over').innerText = `Game Over! \nScore: ${score}`;
+            document.getElementById('game-over').style.display = 'block';
+            document.getElementById('restart').style.display = 'block';
         }
+    }
+
+    function playSound(type) {
+        const sound = new Audio();
+        if (type === 'clear-line') {
+            sound.src = 'https://www.soundjay.com/button/beep-07.wav';
+        } else if (type === 'game-over') {
+            sound.src = 'https://www.soundjay.com/button/sounds/button-09.mp3';
+        }
+        sound.play();
     }
 
     function draw() {
@@ -178,9 +253,13 @@
         for (let r = 0; r < row; r++) {
             for (let c = 0; c < col; c++) {
                 if (board[r][c]) {
-                    ctx.fillStyle = board[r][c];
+                    const gradient = ctx.createLinearGradient(c * blockSize, r * blockSize, (c + 1) * blockSize, (r + 1) * blockSize);
+                    gradient.addColorStop(0, '#2980b9');
+                    gradient.addColorStop(1, '#3498db');
+                    ctx.fillStyle = gradient;
                     ctx.fillRect(c * blockSize, r * blockSize, blockSize, blockSize);
                     ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 1;
                     ctx.strokeRect(c * blockSize, r * blockSize, blockSize, blockSize);
                 }
             }
@@ -191,9 +270,13 @@
         for (let rowIndex = 0; rowIndex < currentTetromino.length; rowIndex++) {
             for (let colIndex = 0; colIndex < currentTetromino[rowIndex].length; colIndex++) {
                 if (currentTetromino[rowIndex][colIndex]) {
-                    ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+                    const gradient = ctx.createLinearGradient((tetrominoCol + colIndex) * blockSize, (tetrominoRow + rowIndex) * blockSize, (tetrominoCol + colIndex + 1) * blockSize, (tetrominoRow + rowIndex + 1) * blockSize);
+                    gradient.addColorStop(0, '#2980b9');
+                    gradient.addColorStop(1, '#3498db');
+                    ctx.fillStyle = gradient;
                     ctx.fillRect((tetrominoCol + colIndex) * blockSize, (tetrominoRow + rowIndex) * blockSize, blockSize, blockSize);
                     ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 1;
                     ctx.strokeRect((tetrominoCol + colIndex) * blockSize, (tetrominoRow + rowIndex) * blockSize, blockSize, blockSize);
                 }
             }
@@ -202,14 +285,18 @@
 
     function restartGame() {
         gameOver = false;
+        score = 0;
+        level = 1;
+        document.getElementById('score').innerText = 'Score: ' + score;
+        document.getElementById('level').innerText = 'Level: ' + level;
         board = Array.from({ length: row }, () => Array(col).fill(null));
-        document.getElementById('restart').style.display = 'none'; // Hide restart button
+        document.getElementById('restart').style.display = 'none';
+        document.getElementById('game-over').style.display = 'none';
         newTetromino();
-        gameInterval = setInterval(draw, 100);
+        gameInterval = setInterval(draw, speed);
     }
 
-    newTetromino();
-    const gameInterval = setInterval(draw, 100);
+    let gameInterval = setInterval(draw, speed);
 
 </script>
 
