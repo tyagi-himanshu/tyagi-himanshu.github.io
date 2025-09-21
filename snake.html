@@ -67,18 +67,6 @@
         y: Math.floor(Math.random() * 18 + 1) * box
     };
 
-    const foodImg = new Image();
-    foodImg.src = 'https://upload.wikimedia.org/wikipedia/commons/3/33/Red_Apple.png'; // Food image
-
-    const snakeHeadImg = new Image();
-    snakeHeadImg.src = 'https://upload.wikimedia.org/wikipedia/commons/6/6a/Red_snake.png'; // Snake head image
-
-    const snakeBodyImg = new Image();
-    snakeBodyImg.src = 'https://upload.wikimedia.org/wikipedia/commons/a/af/Snake_body.png'; // Snake body image
-
-    const bgImg = new Image();
-    bgImg.src = 'https://via.placeholder.com/400x400/2c3e50/ffffff?text=Snake+Game+Background'; // Background image
-
     // Event Listener for Direction Change
     document.addEventListener('keydown', direction);
 
@@ -92,20 +80,16 @@
     // Draw everything on the canvas
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height); // Draw the background image
-
+        ctx.fillStyle = '#2ecc71';
         // Draw Snake
         for (let i = 0; i < snake.length; i++) {
             const snakeSegment = snake[i];
-            if (i === 0) {
-                ctx.drawImage(snakeHeadImg, snakeSegment.x, snakeSegment.y, box, box); // Draw Snake Head
-            } else {
-                ctx.drawImage(snakeBodyImg, snakeSegment.x, snakeSegment.y, box, box); // Draw Snake Body
-            }
+            ctx.fillRect(snakeSegment.x, snakeSegment.y, box, box);
         }
 
         // Draw Food
-        ctx.drawImage(foodImg, food.x, food.y, box, box);
+        ctx.fillStyle = '#e74c3c';
+        ctx.fillRect(food.x, food.y, box, box);
 
         let snakeX = snake[0].x;
         let snakeY = snake[0].y;
@@ -122,7 +106,6 @@
                 x: Math.floor(Math.random() * 18 + 1) * box,
                 y: Math.floor(Math.random() * 18 + 1) * box
             };
-            playSound('eat');
         } else {
             snake.pop();
         }
@@ -132,7 +115,6 @@
         // Check for collisions
         if (snakeX < 0 || snakeX >= 20 * box || snakeY < 0 || snakeY >= 20 * box || collision(newHead, snake)) {
             gameOver = true;
-            playSound('gameOver');
             document.getElementById('restart').style.display = 'block'; // Show restart button
             return;
         }
@@ -150,16 +132,6 @@
             if (head.x === array[i].x && head.y === array[i].y) return true;
         }
         return false;
-    }
-
-    function playSound(type) {
-        const sound = new Audio();
-        if (type === 'eat') {
-            sound.src = 'https://www.soundjay.com/button/beep-07.wav'; // Eat sound effect
-        } else if (type === 'gameOver') {
-            sound.src = 'https://www.soundjay.com/button/sounds/button-09.mp3'; // Game over sound
-        }
-        sound.play();
     }
 
     function restartGame() {
