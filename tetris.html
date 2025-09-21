@@ -1,319 +1,491 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Basic Tetris HTML Game</title>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <title>Tetris — Levels + Start/Pause/Stop + Arrow/WASD + Space</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-  html, body {
-    height: 100%;
-    margin: 0;
-  }
-
-  body {
-    background: black;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  canvas {
-    border: 1px solid white;
-  }
+    :root {
+      --bg:#0b0b0c;
+      --panel:#131416;
+      --accent:#4ade80;
+      --muted:#a1a1aa;
+      --grid:32px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: radial-gradient(1200px 600px at 30% 20%, #111827 0%, #0b0b0c 50%, #000 100%);
+      color: white;
+      display: grid;
+      place-items: center;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+    }
+    .wrap {
+      display: grid;
+      grid-template-columns: auto 280px;
+      gap: 16px;
+      padding: 16px;
+      width: min(100vw, 900px);
+    }
+    .stage {
+      background: #000;
+      border: 2px solid #2a2a2a;
+      box-shadow: 0 10px 30px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.05);
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,.06);
+      padding: 16px;
+      border-radius: 12px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+    .panel h2 {
+      margin: 0 0 4px;
+      font-size: 18px;
+      letter-spacing: .2px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 14px;
+    }
+    .stat {
+      background: #0f1012;
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .stat b { display: block; font-size: 12px; color: var(--muted); font-weight: 500; }
+    .stat span { font-size: 18px; font-weight: 700; }
+    .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .buttons button {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,.12);
+      background: #1a1b1f;
+      color: white;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+      letter-spacing: .2px;
+      transition: transform .05s ease, background .2s ease, border-color .2s ease;
+    }
+    .buttons button:hover { background:#23242a; }
+    .buttons button:active { transform: translateY(1px); }
+    .buttons button.primary { background: #1f2937; border-color: #334155; }
+    .buttons button.accent { background: #17442a; border-color:#2a7c52; }
+    .hint {
+      font-size: 12px; color: var(--muted); line-height: 1.35;
+      border-top: 1px dashed rgba(255,255,255,.08);
+      padding-top: 10px;
+    }
+    .kbd {
+      display:inline-block; border:1px solid rgba(255,255,255,.18); border-bottom-width:2px;
+      padding: 2px 6px; border-radius:6px; background:#0f1115; color:#e5e7eb; font-weight:700; font-size:11px;
+    }
+    .badgelive {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:6px 10px; font-size:12px; border-radius: 999px;
+      background:#0f1115; border:1px solid rgba(255,255,255,.08);
+      width:max-content;
+    }
+    .dot { width:8px; height:8px; border-radius:50%; background:#ef4444; box-shadow:0 0 10px rgba(239,68,68,.6); }
+    .dot.on { background: var(--accent); box-shadow: 0 0 10px rgba(74,222,128,.6); }
+    .nextbox {
+      margin-top: 4px; background:#0f1012; border:1px solid rgba(255,255,255,.06);
+      border-radius:8px; padding:8px; display:grid; place-items:center; height:120px;
+    }
+    canvas#next { background:#000; border:1px solid #2a2a2a; }
+    .footer { font-size: 11px; color:#a1a1aa; text-align:center; }
+    @media (max-width: 820px) {
+      .wrap { grid-template-columns: 1fr; }
+      .panel { order: -1; }
+      .buttons { grid-template-columns: 1fr 1fr 1fr; }
+    }
   </style>
 </head>
 <body>
-<canvas width="320" height="640" id="game"></canvas>
+  <div class="wrap">
+    <canvas id="game" class="stage" width="320" height="640" aria-label="Tetris playfield"></canvas>
+
+    <aside class="panel" aria-label="Control panel">
+      <div class="badgelive"><span id="live-dot" class="dot"></span> <span id="live-text">Stopped</span></div>
+      <h2>Next</h2>
+      <div class="nextbox">
+        <canvas id="next" width="96" height="96"></canvas>
+      </div>
+
+      <h2>Stats</h2>
+      <div class="stats">
+        <div class="stat"><b>Score</b><span id="score">0</span></div>
+        <div class="stat"><b>Lines</b><span id="lines">0</span></div>
+        <div class="stat"><b>Level</b><span id="level">1</span></div>
+        <div class="stat"><b>Speed</b><span id="speed">1000ms</span></div>
+      </div>
+
+      <h2>Controls</h2>
+      <div class="buttons">
+        <button id="startBtn" class="primary">Start</button>
+        <button id="pauseBtn">Pause</button>
+        <button id="resumeBtn" class="accent">Resume</button>
+        <button id="stopBtn">Stop</button>
+      </div>
+
+      <div class="hint">
+        <div><span class="kbd">←</span>/<span class="kbd">A</span> move left, <span class="kbd">→</span>/<span class="kbd">D</span> move right</div>
+        <div><span class="kbd">↑</span>/<span class="kbd">W</span> rotate • <span class="kbd">↓</span>/<span class="kbd">S</span> soft drop</div>
+        <div><span class="kbd">Space</span> hard drop • <span class="kbd">P</span> pause/resume</div>
+      </div>
+
+      <div class="footer">Made for you — smooth, time-based gravity & guideline pieces.</div>
+    </aside>
+  </div>
+
 <script>
-// https://tetris.fandom.com/wiki/Tetris_Guideline
-
-// get a random integer between the range of [min,max]
-// @see https://stackoverflow.com/a/1527820/2124254
+/* -------------------- Utilities -------------------- */
 function getRandomInt(min, max) {
-  min = Math.ceil(min);
-  max = Math.floor(max);
-
+  min = Math.ceil(min); max = Math.floor(max);
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// generate a new tetromino sequence
-// @see https://tetris.fandom.com/wiki/Random_Generator
-function generateSequence() {
-  const sequence = ['I', 'J', 'L', 'O', 'S', 'T', 'Z'];
+/* -------------------- Tetrominoes -------------------- */
+const tetrominos = {
+  'I': [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+  'J': [[1,0,0],[1,1,1],[0,0,0]],
+  'L': [[0,0,1],[1,1,1],[0,0,0]],
+  'O': [[1,1],[1,1]],
+  'S': [[0,1,1],[1,1,0],[0,0,0]],
+  'Z': [[1,1,0],[0,1,1],[0,0,0]],
+  'T': [[0,1,0],[1,1,1],[0,0,0]]
+};
+const colors = { I:'cyan', O:'yellow', T:'purple', S:'green', Z:'red', J:'blue', L:'orange' };
 
-  while (sequence.length) {
-    const rand = getRandomInt(0, sequence.length - 1);
-    const name = sequence.splice(rand, 1)[0];
-    tetrominoSequence.push(name);
+function rotate(matrix){
+  const N = matrix.length - 1;
+  return matrix.map((row,i)=> row.map((_,j)=> matrix[N - j][i]));
+}
+
+/* -------------------- Game State -------------------- */
+const grid = 32;
+const canvas = document.getElementById('game');
+const context = canvas.getContext('2d');
+
+const nextCanvas = document.getElementById('next');
+const nextCtx = nextCanvas.getContext('2d');
+
+let tetrominoSequence = [];
+let holdNext = null;
+
+const rows = 20, cols = 10;
+let playfield = [];
+
+let active = null; // {name, matrix, row, col}
+let dropInterval = 1000;   // ms, changes by level
+let lastTime = 0;          // timestamp accumulator
+let acc = 0;               // accumulated time since last drop
+
+let score = 0, lines = 0, level = 1;
+let running = false, paused = false, gameOver = false;
+let rAF = null;
+
+/* -------------------- UI Elements -------------------- */
+const $score = document.getElementById('score');
+const $lines = document.getElementById('lines');
+const $level = document.getElementById('level');
+const $speed = document.getElementById('speed');
+const $start = document.getElementById('startBtn');
+const $pause = document.getElementById('pauseBtn');
+const $resume = document.getElementById('resumeBtn');
+const $stop = document.getElementById('stopBtn');
+const $liveDot = document.getElementById('live-dot');
+const $liveText = document.getElementById('live-text');
+
+/* -------------------- Helpers -------------------- */
+function updateUI(){
+  $score.textContent = score;
+  $lines.textContent = lines;
+  $level.textContent = level;
+  $speed.textContent = dropInterval + 'ms';
+  $liveDot.classList.toggle('on', running && !paused);
+  $liveText.textContent = gameOver ? 'Game Over' : (running ? (paused?'Paused':'Running') : 'Stopped');
+}
+
+function levelFromLines(totalLines){
+  // Level increases every 10 lines; cap speed at ~70ms
+  const lvl = Math.floor(totalLines / 10) + 1;
+  return Math.min(lvl, 20);
+}
+function speedFromLevel(lvl){
+  // Exponential-ish decay; feel-good curve
+  return Math.max(70, Math.floor(1000 * Math.pow(0.85, (lvl-1))));
+}
+
+function resetField(){
+  playfield = [];
+  for (let r = -2; r < rows; r++){
+    playfield[r] = [];
+    for (let c = 0; c < cols; c++) playfield[r][c] = 0;
   }
 }
 
-// get the next tetromino in the sequence
-function getNextTetromino() {
-  if (tetrominoSequence.length === 0) {
-    generateSequence();
+function generateSequence(){
+  const bag = ['I','J','L','O','S','T','Z'];
+  while (bag.length){
+    const idx = getRandomInt(0, bag.length-1);
+    tetrominoSequence.push(bag.splice(idx,1)[0]);
   }
+}
 
+function getNext(){
+  if (tetrominoSequence.length === 0) generateSequence();
   const name = tetrominoSequence.pop();
   const matrix = tetrominos[name];
-
-  // I and O start centered, all others start in left-middle
-  const col = playfield[0].length / 2 - Math.ceil(matrix[0].length / 2);
-
-  // I starts on row 21 (-1), all others start on row 22 (-2)
+  const col = Math.floor(cols/2 - Math.ceil(matrix[0].length/2));
   const row = name === 'I' ? -1 : -2;
-
-  return {
-    name: name,      // name of the piece (L, O, etc.)
-    matrix: matrix,  // the current rotation matrix
-    row: row,        // current row (starts offscreen)
-    col: col         // current col
-  };
+  return { name, matrix, row, col };
 }
 
-// rotate an NxN matrix 90deg
-// @see https://codereview.stackexchange.com/a/186834
-function rotate(matrix) {
-  const N = matrix.length - 1;
-  const result = matrix.map((row, i) =>
-    row.map((val, j) => matrix[N - j][i])
-  );
-
-  return result;
-}
-
-// check to see if the new matrix/row/col is valid
-function isValidMove(matrix, cellRow, cellCol) {
-  for (let row = 0; row < matrix.length; row++) {
-    for (let col = 0; col < matrix[row].length; col++) {
-      if (matrix[row][col] && (
-          // outside the game bounds
-          cellCol + col < 0 ||
-          cellCol + col >= playfield[0].length ||
-          cellRow + row >= playfield.length ||
-          // collides with another piece
-          playfield[cellRow + row][cellCol + col])
-        ) {
-        return false;
+function isValidMove(matrix, cellRow, cellCol){
+  for (let r = 0; r < matrix.length; r++){
+    for (let c = 0; c < matrix[r].length; c++){
+      if (matrix[r][c]){
+        const pr = cellRow + r;
+        const pc = cellCol + c;
+        if (pc < 0 || pc >= cols || pr >= rows) return false;
+        if (pr >= 0 && playfield[pr][pc]) return false;
       }
     }
   }
-
   return true;
 }
 
-// place the tetromino on the playfield
-function placeTetromino() {
-  for (let row = 0; row < tetromino.matrix.length; row++) {
-    for (let col = 0; col < tetromino.matrix[row].length; col++) {
-      if (tetromino.matrix[row][col]) {
-
-        // game over if piece has any part offscreen
-        if (tetromino.row + row < 0) {
-          return showGameOver();
-        }
-
-        playfield[tetromino.row + row][tetromino.col + col] = tetromino.name;
-      }
-    }
+function hardDrop(){
+  if (!active) return;
+  while (isValidMove(active.matrix, active.row + 1, active.col)) {
+    active.row++;
   }
-
-  // check for line clears starting from the bottom and working our way up
-  for (let row = playfield.length - 1; row >= 0; ) {
-    if (playfield[row].every(cell => !!cell)) {
-
-      // drop every row above this one
-      for (let r = row; r >= 0; r--) {
-        for (let c = 0; c < playfield[r].length; c++) {
-          playfield[r][c] = playfield[r-1][c];
-        }
-      }
-    }
-    else {
-      row--;
-    }
-  }
-
-  tetromino = getNextTetromino();
+  lockPiece();
 }
 
-// show the game over screen
-function showGameOver() {
-  cancelAnimationFrame(rAF);
+function lockPiece(){
+  // Place active onto field
+  for (let r = 0; r < active.matrix.length; r++){
+    for (let c = 0; c < active.matrix[r].length; c++){
+      if (active.matrix[r][c]){
+        if (active.row + r < 0) { gameOverScreen(); return; }
+        playfield[active.row + r][active.col + c] = active.name;
+      }
+    }
+  }
+  // Check line clears (bottom-up)
+  let cleared = 0;
+  for (let r = rows - 1; r >= 0; ){
+    if (playfield[r].every(v => !!v)){
+      // Pull everything down
+      for (let rr = r; rr >= 0; rr--){
+        for (let cc = 0; cc < cols; cc++){
+          playfield[rr][cc] = playfield[rr-1]?.[cc] || 0;
+        }
+      }
+      cleared++;
+    } else {
+      r--;
+    }
+  }
+  if (cleared){
+    // simple scoring: 100, 300, 500, 800 * level
+    const table = [0,100,300,500,800];
+    score += table[cleared] * level;
+    lines += cleared;
+    const newLevel = levelFromLines(lines);
+    if (newLevel !== level){
+      level = newLevel;
+      dropInterval = speedFromLevel(level);
+    }
+    updateUI();
+  }
+  // Next piece
+  active = holdNext ?? getNext();
+  holdNext = getNext();
+  drawNext();
+}
+
+function drawNext(){
+  nextCtx.clearRect(0,0,nextCanvas.width,nextCanvas.height);
+  if (!holdNext) return;
+  const m = holdNext.matrix;
+  const cell = 20; // smaller preview cells
+  const w = m[0].length * cell;
+  const h = m.length * cell;
+  const ox = Math.floor((nextCanvas.width - w)/2);
+  const oy = Math.floor((nextCanvas.height - h)/2);
+  nextCtx.fillStyle = colors[holdNext.name];
+  for (let r = 0; r < m.length; r++){
+    for (let c = 0; c < m[r].length; c++){
+      if (m[r][c]){
+        nextCtx.fillRect(ox + c*cell, oy + r*cell, cell-2, cell-2);
+      }
+    }
+  }
+}
+
+function gameOverScreen(){
   gameOver = true;
-
-  context.fillStyle = 'black';
-  context.globalAlpha = 0.75;
-  context.fillRect(0, canvas.height / 2 - 30, canvas.width, 60);
-
-  context.globalAlpha = 1;
+  running = false;
+  paused = false;
+  cancelAnimationFrame(rAF);
+  context.fillStyle = 'rgba(0,0,0,.75)';
+  context.fillRect(0, canvas.height/2 - 40, canvas.width, 80);
   context.fillStyle = 'white';
-  context.font = '36px monospace';
+  context.font = '32px monospace';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
-  context.fillText('GAME OVER!', canvas.width / 2, canvas.height / 2);
+  context.fillText('GAME OVER', canvas.width/2, canvas.height/2);
+  updateUI();
 }
 
-const canvas = document.getElementById('game');
-const context = canvas.getContext('2d');
-const grid = 32;
-const tetrominoSequence = [];
-
-// keep track of what is in every cell of the game using a 2d array
-// tetris playfield is 10x20, with a few rows offscreen
-const playfield = [];
-
-// populate the empty state
-for (let row = -2; row < 20; row++) {
-  playfield[row] = [];
-
-  for (let col = 0; col < 10; col++) {
-    playfield[row][col] = 0;
-  }
-}
-
-// how to draw each tetromino
-// @see https://tetris.fandom.com/wiki/SRS
-const tetrominos = {
-  'I': [
-    [0,0,0,0],
-    [1,1,1,1],
-    [0,0,0,0],
-    [0,0,0,0]
-  ],
-  'J': [
-    [1,0,0],
-    [1,1,1],
-    [0,0,0],
-  ],
-  'L': [
-    [0,0,1],
-    [1,1,1],
-    [0,0,0],
-  ],
-  'O': [
-    [1,1],
-    [1,1],
-  ],
-  'S': [
-    [0,1,1],
-    [1,1,0],
-    [0,0,0],
-  ],
-  'Z': [
-    [1,1,0],
-    [0,1,1],
-    [0,0,0],
-  ],
-  'T': [
-    [0,1,0],
-    [1,1,1],
-    [0,0,0],
-  ]
-};
-
-// color of each tetromino
-const colors = {
-  'I': 'cyan',
-  'O': 'yellow',
-  'T': 'purple',
-  'S': 'green',
-  'Z': 'red',
-  'J': 'blue',
-  'L': 'orange'
-};
-
-let count = 0;
-let tetromino = getNextTetromino();
-let rAF = null;  // keep track of the animation frame so we can cancel it
-let gameOver = false;
-
-// game loop
-function loop() {
-  rAF = requestAnimationFrame(loop);
+/* -------------------- Rendering -------------------- */
+function drawField(){
   context.clearRect(0,0,canvas.width,canvas.height);
-
-  // draw the playfield
-  for (let row = 0; row < 20; row++) {
-    for (let col = 0; col < 10; col++) {
-      if (playfield[row][col]) {
-        const name = playfield[row][col];
-        context.fillStyle = colors[name];
-
-        // drawing 1 px smaller than the grid creates a grid effect
-        context.fillRect(col * grid, row * grid, grid-1, grid-1);
+  // settled blocks
+  for (let r = 0; r < rows; r++){
+    for (let c = 0; c < cols; c++){
+      const cell = playfield[r][c];
+      if (cell){
+        context.fillStyle = colors[cell];
+        context.fillRect(c*grid, r*grid, grid-1, grid-1);
       }
     }
   }
-
-  // draw the active tetromino
-  if (tetromino) {
-
-    // tetromino falls every 35 frames
-    if (++count > 35) {
-      tetromino.row++;
-      count = 0;
-
-      // place piece if it runs into anything
-      if (!isValidMove(tetromino.matrix, tetromino.row, tetromino.col)) {
-        tetromino.row--;
-        placeTetromino();
-      }
-    }
-
-    context.fillStyle = colors[tetromino.name];
-
-    for (let row = 0; row < tetromino.matrix.length; row++) {
-      for (let col = 0; col < tetromino.matrix[row].length; col++) {
-        if (tetromino.matrix[row][col]) {
-
-          // drawing 1 px smaller than the grid creates a grid effect
-          context.fillRect((tetromino.col + col) * grid, (tetromino.row + row) * grid, grid-1, grid-1);
+  // active
+  if (active){
+    context.fillStyle = colors[active.name];
+    for (let r = 0; r < active.matrix.length; r++){
+      for (let c = 0; c < active.matrix[r].length; c++){
+        if (active.matrix[r][c]){
+          const x = (active.col + c) * grid;
+          const y = (active.row + r) * grid;
+          context.fillRect(x, y, grid-1, grid-1);
         }
       }
     }
   }
 }
 
-// listen to keyboard events to move the active tetromino
-document.addEventListener('keydown', function(e) {
+/* -------------------- Game Loop (time-based) -------------------- */
+function loop(ts){
+  if (!running){ return; }
+  rAF = requestAnimationFrame(loop);
+  if (paused){ return; }
+  if (!lastTime) lastTime = ts;
+  const dt = ts - lastTime;
+  lastTime = ts;
+  acc += dt;
+  if (acc >= dropInterval){
+    acc -= dropInterval;
+    // soft gravity step
+    if (active){
+      const nextRow = active.row + 1;
+      if (isValidMove(active.matrix, nextRow, active.col)){
+        active.row = nextRow;
+      } else {
+        lockPiece();
+      }
+    }
+  }
+  drawField();
+}
+
+/* -------------------- Controls -------------------- */
+function move(dx){
+  if (!active) return;
+  const col = active.col + dx;
+  if (isValidMove(active.matrix, active.row, col)) active.col = col;
+}
+function rotateActive(){
+  if (!active) return;
+  const m = rotate(active.matrix);
+  if (isValidMove(m, active.row, active.col)) active.matrix = m;
+}
+function softDrop(){
+  if (!active) return;
+  const row = active.row + 1;
+  if (isValidMove(active.matrix, row, active.col)) active.row = row;
+  else lockPiece();
+}
+
+document.addEventListener('keydown', (e)=>{
   if (gameOver) return;
 
-  // left and right arrow keys (move)
-  if (e.which === 37 || e.which === 39) {
-    const col = e.which === 37
-      ? tetromino.col - 1
-      : tetromino.col + 1;
-
-    if (isValidMove(tetromino.matrix, tetromino.row, col)) {
-      tetromino.col = col;
-    }
+  const code = e.code;
+  // Pause/Resume
+  if (code === 'KeyP'){
+    if (!running) return;
+    paused = !paused;
+    updateUI();
+    return;
   }
+  // Block controls if not running or paused
+  if (!running || paused) return;
 
-  // up arrow key (rotate)
-  if (e.which === 38) {
-    const matrix = rotate(tetromino.matrix);
-    if (isValidMove(matrix, tetromino.row, tetromino.col)) {
-      tetromino.matrix = matrix;
-    }
-  }
+  // Left
+  if (code === 'ArrowLeft' || code === 'KeyA'){ e.preventDefault(); move(-1); }
+  // Right
+  if (code === 'ArrowRight' || code === 'KeyD'){ e.preventDefault(); move(1); }
+  // Rotate
+  if (code === 'ArrowUp' || code === 'KeyW'){ e.preventDefault(); rotateActive(); }
+  // Soft drop
+  if (code === 'ArrowDown' || code === 'KeyS'){ e.preventDefault(); softDrop(); }
+  // Hard drop
+  if (code === 'Space'){ e.preventDefault(); hardDrop(); }
 
-  // down arrow key (drop)
-  if(e.which === 40) {
-    const row = tetromino.row + 1;
-
-    if (!isValidMove(tetromino.matrix, row, tetromino.col)) {
-      tetromino.row = row - 1;
-
-      placeTetromino();
-      return;
-    }
-
-    tetromino.row = row;
-  }
+  drawField(); // instant visual response for “smoother” feel
 });
 
-// start the game
-rAF = requestAnimationFrame(loop);
+/* -------------------- Buttons -------------------- */
+$start.addEventListener('click', ()=>{
+  // Start new game
+  cancelAnimationFrame(rAF);
+  score = 0; lines = 0; level = 1;
+  dropInterval = speedFromLevel(level);
+  acc = 0; lastTime = 0; gameOver = false; paused = false; running = true;
+  tetrominoSequence = [];
+  resetField();
+  active = getNext();
+  holdNext = getNext();
+  drawNext();
+  updateUI();
+  drawField();
+  rAF = requestAnimationFrame(loop);
+});
+$pause.addEventListener('click', ()=>{
+  if (!running || gameOver) return;
+  paused = true;
+  updateUI();
+});
+$resume.addEventListener('click', ()=>{
+  if (!running || gameOver) return;
+  if (paused){
+    paused = false;
+    updateUI();
+  }
+});
+$stop.addEventListener('click', ()=>{
+  if (!running) return;
+  running = false; paused = false;
+  cancelAnimationFrame(rAF);
+  updateUI();
+});
+
+/* -------------------- Boot -------------------- */
+resetField();
+updateUI();
+drawField();
+drawNext();
 </script>
 </body>
 </html>
