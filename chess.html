@@ -3,8 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Chess — Player vs Computer (GitHub Pages)</title>
-  <meta name="description" content="Play chess vs computer (1–10 levels). Start/Pause/Resume, Undo, Takeback. Smooth animations. Works on GitHub Pages — no external libs." />
+  <title>Chess — Player vs Computer</title>
   <style>
     :root {
       --bg: #0e1020;
@@ -40,11 +39,6 @@
       display: grid;
       grid-template-columns: 1fr 330px;
       gap: 18px;
-    }
-    @media (max-width: 900px) {
-      .app {
-        grid-template-columns: 1fr;
-      }
     }
     .card {
       background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .02));
@@ -102,24 +96,6 @@
     }
     .btn.danger {
       border-color: #b35252;
-    }
-    .right .row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin: 12px 0;
-    }
-    .slider {
-      width: 100%;
-      accent-color: var(--accent);
-    }
-    .badge {
-      font: 700 12px/1 monospace;
-      color: #12151f;
-      background: var(--accent);
-      padding: 4px 8px;
-      border-radius: 999px;
     }
 
     /* Board */
@@ -317,3 +293,4 @@
 
 </body>
 </html>
+
